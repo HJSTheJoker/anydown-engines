@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "vendor": "Eclipse Adoptium Temurin",
+  "license": "GPL-2.0-only WITH Classpath-exception-2.0",
+  "platforms": {
+    "aarch64-apple-darwin": {
+      "jdk": {
+        "version": "21.0.12+101.0.LTS",
+        "filename": "OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "3623232f33a9c3baadf304480b2535f9a3cba8a58d42ecbb438ba267315d9998"
+      },
+      "jre": {
+        "version": "21.0.12+101.0.LTS",
+        "filename": "OpenJDK21U-jre_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "dec50fc6f9fcd4fe3ae8cabf5a5fa68f6afc48841f7698e468e9aa5d54beed84"
+      }
+    },
+    "x86_64-apple-darwin": {
+      "jdk": {
+        "version": "21.0.12+101.0.LTS",
+        "filename": "OpenJDK21U-jdk_x64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "44db0f08196daf19a47f90d13388b0c943b67663cb537f998fe29e836fa842ce"
+      },
+      "jre": {
+        "version": "21.0.12+101.0.LTS",
+        "filename": "OpenJDK21U-jre_x64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "6717ec641fd9ce0bb209ca083ee23b42202ac68cb6fcc5753496e0e4a0f41989"
+      }
+    },
+    "x86_64-unknown-linux-gnu": {
+      "jdk": {
+        "version": "21.0.12+101.0.LTS",
+        "filename": "OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94"
+      },
+      "jre": {
+        "version": "21.0.12+101.0.LTS",
+        "filename": "OpenJDK21U-jre_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "2413149700df0f7d440500a84a8f764c535f21e5a5e87d38328b64eec2c5b500"
+      }
+    }
+  },
+  "maven": {
+    "version": "3.9.16",
+    "filename": "apache-maven-3.9.16-bin.tar.gz",
+    "url": "https://dlcdn.apache.org/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz",
+    "sha256": "80ffca22aed9e8b9713a232f3394fd81d7f20322df75efdb2b047dbd3e3a23bb",
+    "sha512": "831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6",
+    "license": "Apache-2.0"
+  },
+  "java_source": {
+    "filename": "OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz",
+    "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk-sources_21.0.12.1_1.tar.gz",
+    "sha256": "573057d03584ae793fb7ec9a14c76d826d9187a53efeefd99da47403a5308234"
+  }
+}

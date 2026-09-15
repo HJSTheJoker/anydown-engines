@@ -1,0 +1,86 @@
+{
+  "format": 1,
+  "dependencies": [
+    {
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-annotations",
+      "version": "2.18.6",
+      "scope": "compile",
+      "sha256": "face5c37bee1f0768f5f198d077fc29d163becca95de9e0f13962c84d1047662",
+      "sources_included": true,
+      "sources_sha256": "8129975145545216c101bc7fba3f6805ef12159eb92bf78d11798c504e1bb3cf"
+    },
+    {
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-core",
+      "version": "2.18.6",
+      "scope": "compile",
+      "sha256": "e7e1bfa50f0a79db37e6aa37db111cf03aebf4a484b359d21127ab43ab2398c6",
+      "sources_included": true,
+      "sources_sha256": "d6e3d6a4f379a1761a99cf59d8e706ef6fa225bb5207dcba54e78a3cc7f9fb74"
+    },
+    {
+      "group": "com.fasterxml.jackson.core",
+      "artifact": "jackson-databind",
+      "version": "2.18.6",
+      "scope": "compile",
+      "sha256": "45d124736ea29dc374171fc1a8a9958e0f44407c1e0aae0297d8eee267fb592e",
+      "sources_included": true,
+      "sources_sha256": "f8dcda84fc1ed6d730a48ccdb2fd80fde8b40fcfc5824e2c4aeb51a8c27b2db6"
+    },
+    {
+      "group": "commons-io",
+      "artifact": "commons-io",
+      "version": "2.14.0",
+      "scope": "compile",
+      "sha256": "e35d1df7232568ed4b81d9a9ed94a0159b3ff6cf1915cc21eef5cb55d7b157a2",
+      "sources_included": true,
+      "sources_sha256": "6f8318a3e9f1a27b4d0a16e2802077951a0299951504d53cc24068016f21ddff"
+    },
+    {
+      "group": "javax.activation",
+      "artifact": "javax.activation-api",
+      "version": "1.2.0",
+      "scope": "compile",
+      "sha256": "43fdef0b5b6ceb31b0424b208b930c74ab58fac2ceeb7b3f6fd3aeb8b5ca4393",
+      "sources_included": true,
+      "sources_sha256": "d7411fb29089cafa4b77493f10bfb52832cd1976948903d0b039e12b0bd70334"
+    },
+    {
+      "group": "javax.xml.bind",
+      "artifact": "jaxb-api",
+      "version": "2.3.1",
+      "scope": "compile",
+      "sha256": "88b955a0df57880a26a74708bc34f74dcaf8ebf4e78843a28b50eae945732b06",
+      "sources_included": true,
+      "sources_sha256": "d69dc2c28833df5fb6e916efae01477ae936326b342d479a43539b0131c96b9d"
+    },
+    {
+      "group": "org.apache.commons",
+      "artifact": "commons-collections4",
+      "version": "4.4",
+      "scope": "compile",
+      "sha256": "1df8b9430b5c8ed143d7815e403e33ef5371b2400aadbe9bda0883762e0846d1",
+      "sources_included": true,
+      "sources_sha256": "93b4ff13ee810830a247dfa83bf5b73c401a591af4c11f3efb9b9da581e70452"
+    },
+    {
+      "group": "org.sejda.webp-imageio",
+      "artifact": "webp-imageio-sejda",
+      "version": "0.1.0",
+      "scope": "compile",
+      "sha256": "22897053ec8dd8834f635b8e16af88301d6b86f71775b27055e34561870ced90",
+      "sources_included": true,
+      "sources_sha256": "31678c594b75e481b043fd8526105b7de444ad8b7ad4d9bf55990a49f4a54f8c"
+    },
+    {
+      "group": "org.xerial",
+      "artifact": "sqlite-jdbc",
+      "version": "3.43.0.0",
+      "scope": "compile",
+      "sha256": "50524b16b649fb03f81df6e61dec69911b8849e6943c61b85faa24e49bfd98fc",
+      "sources_included": true,
+      "sources_sha256": "1f9b49d598ae80b8b0bcd77c208c7d6cc968f2a08d9d53714691b4e1dbc106ea"
+    }
+  ]
+}

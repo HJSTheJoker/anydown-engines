@@ -1,24 +1,41 @@
-<h1>MegaBasterd</h1>
+# AnyDown headless MegaBasterd engine
 
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/Naereen/StrapDown.js/graphs/commit-activity) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+A maintained GPL-3.0 fork of [MegaBasterd](https://github.com/tonikelope/megabasterd)
+for AnyDown's native desktop interface. The pinned baseline is recorded in
+[upstream.lock.json](upstream.lock.json). Original upstream documentation is
+preserved in [UPSTREAM_README.md](UPSTREAM_README.md).
 
-<p align="center"><i>"If it compiles, it's good; if it boots up, it's perfect." (Linus Torvalds)</i></p>
-<p align="center"><a href="https://github.com/tonikelope/megabasterd/releases/latest" target="_blank"><img src="https://raw.githubusercontent.com/tonikelope/megabasterd/master/src/main/resources/images/mbasterd_logo_git.png"></a></p>
-<h2 align="center"><a href="https://github.com/tonikelope/megabasterd/releases/latest" target="_blank"><b>Download latest build</b></a></h2>
-<h3 align="center"><i>Note: MegaBasterd jar version requires <a href="https://adoptium.net/es/temurin/releases/?version=11" target="_blank">Java 8 or later</a>.</i></h3>
-<p align="center"><a href="https://github.com/tonikelope/megabasterd/releases/latest" target="_blank"><img src="https://raw.githubusercontent.com/tonikelope/megabasterd/master/src/main/resources/images/linux-mac-windows.png"></a></p>
-<p align="center"><a href="https://github.com/tonikelope/megabasterd/issues/397"><b>Would you like to help by translating MegaBasterd into your favorite language?</b></a></p>
+The Java process exposes versioned JSON-RPC over stdin/stdout and runs with
+`java.awt.headless=true`. AnyDown controls downloads, uploads, accounts, streaming,
+settings and utilities without opening a Swing window. Upstream MEGA transport,
+cryptography and proxy code remain separate from the headless controllers.
 
+## Build and test
 
-![Screnshot](/src/main/resources/images/mbasterd_screen.png)
+```sh
+python3 scripts/mega_build.py --output .build/qualified/runtime
+python3 scripts/mega_smoke.py .build/qualified/runtime/mega
+```
 
+The scripts fetch checksum-pinned Java 21 and Maven locally, execute headless
+JUnit tests, verify dependency hashes and package a relocatable engine/runtime
+with corresponding sources and licences. No system Java installation is required.
+Build each supported target natively: Apple Silicon macOS, Intel macOS and Linux
+x86-64. Binary and source dependency pins are in the committed lock files.
 
+## Releases
 
+See [ENGINE_RELEASE.md](ENGINE_RELEASE.md) for qualification, signing and release
+procedures. The updater consumes signed AnyDown-qualified engine packages, never
+unreviewed upstream JARs. Release manifests pin the platform, protocol, data format,
+source revision and artifact hash. Private signing keys and user profiles must
+never be committed. The daily upstream workflow prepares upgrade proposals.
 
-<p align="center"><a href="https://youtu.be/5TkBXT7osQI"><b>MegaBasterd DEMO</b></a></p>
+## Compatibility and acceptance
 
-<p align="center"><img src="https://raw.githubusercontent.com/tonikelope/megabasterd/master/coffee.png"><br><img src="https://raw.githubusercontent.com/tonikelope/megabasterd/master/src/main/resources/images/ethereum_toni.png"></p>
-
-<p align="center"><a href="https://github.com/tonikelope/megabasterd/issues/385#issuecomment-1019215670">BONUS: Why the f*ck has MegaBasterd stopped downloading?</a></p>
-
-<p align="center"><b>IMPORTANT:</b> You are not authorized to use MegaBasterd in any way that violates <a href="https://mega.io/es/terms"><b>MEGA's terms of use</b></a>.</p>
+Maintaining the headless integration requires reviewing upstream changes. Future
+upstream releases are not automatically compatible until qualified. Account and
+transfer fixtures are separate from live authentication/upload acceptance; do not
+claim live account coverage from synthetic tests. The engine retains upstream
+source attribution and GPL-3.0 licensing; Java and dependencies retain their own
+licences in the packaged legal inventory.

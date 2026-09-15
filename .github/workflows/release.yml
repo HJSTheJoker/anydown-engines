@@ -1,0 +1,87 @@
+name: Release verified engine
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Reviewed immutable release tag'
+        required: true
+      sequence:
+        description: 'Monotonically increasing positive update sequence'
+        required: true
+permissions:
+  contents: read
+jobs:
+  qualify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python3 scripts/mega_build.py --output .build/qualified/runtime --archive .build/qualified/engine.tar.gz
+      - run: python3 scripts/mega_smoke.py .build/qualified/runtime/mega
+      - run: python3 scripts/audit_runtime.py .build/qualified/runtime --target '${{ matrix.target }}'
+      - run: python3 -m unittest discover -s scripts/tests -p 'test_mega*.py'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qualified-${{ matrix.target }}
+          path: .build/qualified/engine.tar.gz
+  sign-and-publish:
+    needs: qualify
+    runs-on: ubuntu-22.04
+    environment: engine-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python3 -m pip install 'cryptography==45.0.7'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: qualified-*
+          path: .build/qualified
+      - name: Sign each qualified platform
+        env:
+          ENGINE_SIGNING_KEY: ${{ secrets.ENGINE_SIGNING_KEY }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_SEQUENCE: ${{ inputs.sequence }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, tarfile
+          import sys
+          sys.path.insert(0, 'scripts')
+          from mega_release import release
+          key=pathlib.Path('.build/release.pem')
+          fd=os.open(key,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+          try:
+              with os.fdopen(fd,'w') as output: output.write(os.environ['ENGINE_SIGNING_KEY'])
+              for artifact in pathlib.Path('.build/qualified').glob('qualified-*'):
+                  # Restore executability from the qualified archive; artifact uploads flatten modes.
+                  runtime=artifact.parent / artifact.name.replace('qualified-','runtime-')
+                  runtime.mkdir()
+                  with tarfile.open(artifact/'engine.tar.gz') as archive: archive.extractall(runtime,filter='data')
+                  release(runtime,pathlib.Path('.build/release'),key,os.environ['RELEASE_TAG'],int(os.environ['RELEASE_SEQUENCE']))
+          finally:
+              key.unlink(missing_ok=True)
+          PY
+      - name: Publish immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: gh release create "$RELEASE_TAG" .build/release/* --verify-tag --title "$RELEASE_TAG" --notes 'Qualified headless MegaBasterd engine, pinned Java runtime, corresponding sources, licences, and signed platform manifests.'

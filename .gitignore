@@ -130,3 +130,13 @@ $RECYCLE.BIN/
 
 #MegaBasterd DB
 *.db
+
+# AnyDown private build inputs, profiles and release-signing material
+/.build/
+/dist/
+__pycache__/
+.pytest_cache/
+*.pem
+*.key
+*.db-wal
+*.db-shm

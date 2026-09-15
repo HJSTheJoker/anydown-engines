@@ -1158,6 +1158,11 @@ public class MegaAPI implements Serializable {
     }
 
     public String uploadThumbnails(Upload upload, String node_handle, String filename0, String filename1) throws MegaAPIException {
+        return uploadThumbnailsHeadless(upload.getByte_file_key(),node_handle,filename0,filename1,upload::isStopped,out->new ThrottledOutputStream(out,upload.getMain_panel().getStream_supervisor()));
+    }
+    @FunctionalInterface public interface ThumbnailOutput { OutputStream wrap(OutputStream out) throws IOException; }
+    /** Same upstream attribute transport and crypto with injected state and bandwidth observer. */
+    public String uploadThumbnailsHeadless(byte[] fileKey,String node_handle,String filename0,String filename1,java.util.function.BooleanSupplier stopped,ThumbnailOutput output) throws MegaAPIException {
 
         String[] ul_url = new String[2];
 
@@ -1171,11 +1176,11 @@ public class MegaAPI implements Serializable {
 
             byte[][] file_bytes = new byte[2][];
 
-            file_bytes[0] = _encThumbAttr(Files.readAllBytes(files[0].toPath()), upload.getByte_file_key());
+            file_bytes[0] = _encThumbAttr(Files.readAllBytes(files[0].toPath()), fileKey);
 
             files[1] = new File(filename1);
 
-            file_bytes[1] = _encThumbAttr(Files.readAllBytes(files[1].toPath()), upload.getByte_file_key());
+            file_bytes[1] = _encThumbAttr(Files.readAllBytes(files[1].toPath()), fileKey);
 
             // No "ssl":1 here on purpose: the attribute (thumbnail) data is already AES-CBC encrypted
             // with the file key, so it travels over plain HTTP just like the file chunks. Forcing TLS
@@ -1227,7 +1232,7 @@ public class MegaAPI implements Serializable {
 
                         int reads;
 
-                        try (OutputStream out = new ThrottledOutputStream(con.getOutputStream(), upload.getMain_panel().getStream_supervisor())) {
+                        try (OutputStream out = output.wrap(con.getOutputStream())) {
 
                             out.write(file_bytes[h]);
                         }
@@ -1253,7 +1258,7 @@ public class MegaAPI implements Serializable {
 
                     } catch (IOException ex) {
 
-                        if (upload.isStopped() || ++conta_error >= MAX_THUMBNAIL_UPLOAD_RETRIES) {
+                        if (stopped.getAsBoolean() || Thread.currentThread().isInterrupted() || ++conta_error >= MAX_THUMBNAIL_UPLOAD_RETRIES) {
                             throw ex;
                         }
 
@@ -1323,6 +1328,66 @@ public class MegaAPI implements Serializable {
         }
 
         return res_map != null ? res_map[0] : null;
+    }
+
+    /** Native headless upload publication for the user's own drive (no share-key CR). */
+    public HashMap<String,Object> finishUploadFileHeadless(String name, int[] uploadKey, int[] nodeKey, String handle, String parent) throws Exception {
+        return finishUploadFileHeadless(name,uploadKey,nodeKey,handle,parent,null,null);
+    }
+    public HashMap<String,Object> finishUploadFileHeadless(String name, int[] uploadKey, int[] nodeKey, String handle, String parent,String root,byte[] shareKey) throws Exception {
+        ObjectMapper json = new ObjectMapper();
+        HashMap<String,Object> attr = new HashMap<>(); attr.put("n", name);
+        HashMap<String,Object> node = new HashMap<>();
+        node.put("h", handle); node.put("t", 0);
+        node.put("a", Bin2UrlBASE64(_encAttr(json.writeValueAsString(attr), i32a2bin(Arrays.copyOfRange(uploadKey, 0, 4)))));
+        node.put("k", Bin2UrlBASE64(encryptKey(i32a2bin(nodeKey), i32a2bin(_master_key))));
+        HashMap<String,Object> request = new HashMap<>();
+        request.put("a", "p"); request.put("t", parent); request.put("n", java.util.Collections.singletonList(node)); request.put("i", _req_id);
+        if(root!=null&&shareKey!=null)request.put("cr",Arrays.asList(java.util.Collections.singletonList(root),java.util.Collections.singletonList(handle),Arrays.asList(0,0,Bin2UrlBASE64(encryptKey(i32a2bin(nodeKey),shareKey)))));
+        String response = RAW_REQUEST(json.writeValueAsString(java.util.Collections.singletonList(request)), new URL(API_URL + "/cs?id=" + _nextSeqno() + "&sid=" + _sid + _apiStdParams()));
+        return json.readValue(response, HashMap[].class)[0];
+    }
+
+    /** Native folder picker with no account keys or file links in the response. */
+    public java.util.List<java.util.Map<String,Object>> getOwnFoldersHeadless() throws Exception {
+        String response=RAW_REQUEST("[{\"a\":\"f\",\"c\":1}]",new URL(API_URL+"/cs?id="+_nextSeqno()+"&sid="+_sid+_apiStdParams()));
+        HashMap[] data=new ObjectMapper().readValue(response,HashMap[].class);
+        return com.tonikelope.megabasterd.headless.HeadlessFolderDecoder.decode((java.util.List<?>)data[0].get("f"),i32a2bin(_master_key));
+    }
+
+    /** Find a previously published own-drive node by its unique encryption key, for crash recovery. */
+    public String findOwnNodeHeadless(String parent, String name, int type, byte[] expectedKey) throws Exception {
+        String request = "[{\"a\":\"f\",\"c\":1}]";
+        String response = RAW_REQUEST(request, new URL(API_URL + "/cs?id=" + _nextSeqno() + "&sid=" + _sid + _apiStdParams()));
+        HashMap[] data = new ObjectMapper().readValue(response, HashMap[].class);
+        for (Object item : (Iterable<?>)data[0].get("f")) {
+            java.util.Map node=(java.util.Map)item;
+            if (!parent.equals(node.get("p")) || !(node.get("t") instanceof Number) || ((Number)node.get("t")).intValue()!=type || node.get("k")==null) continue;
+            for(String segment:node.get("k").toString().split("/")) {
+                try {
+                    String encrypted=segment.substring(segment.lastIndexOf(':')+1);
+                    byte[] key=decryptKey(UrlBASE642Bin(encrypted),i32a2bin(_master_key));
+                    if(!java.security.MessageDigest.isEqual(key,expectedKey))continue;
+                    byte[] attrKey=type==0?initMEGALinkKey(Bin2UrlBASE64(key)):key;
+                    HashMap attributes=_decAttr((String)node.get("a"),attrKey);
+                    if(attributes!=null && name.equals(attributes.get("n")))return (String)node.get("h");
+                } catch(Exception ignored) { }
+            }
+        }
+        return null;
+    }
+    /** Create a native folder with JSON-escaped attributes and no Swing callback. */
+    public String createDirHeadless(String name,String parent,byte[] key) throws Exception {return createDirHeadless(name,parent,key,null,null);}
+    public String createDirHeadless(String name,String parent,byte[] key,String root,byte[] shareKey) throws Exception {
+        ObjectMapper json=new ObjectMapper();
+        java.util.Map<String,Object> node=new java.util.LinkedHashMap<>();node.put("h","xxxxxxxx");node.put("t",1);
+        node.put("a",Bin2UrlBASE64(_encAttr(json.writeValueAsString(java.util.Collections.singletonMap("n",name)),key)));
+        node.put("k",Bin2UrlBASE64(encryptKey(key,i32a2bin(_master_key))));
+        java.util.Map<String,Object> request=new java.util.LinkedHashMap<>();request.put("a","p");request.put("t",parent);request.put("n",java.util.Collections.singletonList(node));request.put("i",_req_id);
+        if(root!=null&&shareKey!=null)request.put("cr",Arrays.asList(java.util.Collections.singletonList(root),java.util.Collections.singletonList("xxxxxxxx"),Arrays.asList(0,0,Bin2UrlBASE64(encryptKey(key,shareKey)))));
+        String response=RAW_REQUEST(json.writeValueAsString(java.util.Collections.singletonList(request)),new URL(API_URL+"/cs?id="+_nextSeqno()+"&sid="+_sid+_apiStdParams()));
+        HashMap[] result=json.readValue(response,HashMap[].class);
+        return (String)((java.util.Map)((List)result[0].get("f")).get(0)).get("h");
     }
 
     public byte[] encryptKey(byte[] a, byte[] key) throws Exception {

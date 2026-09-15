@@ -451,6 +451,11 @@ public final class MainPanel {
         return _use_smart_proxy;
     }
 
+    /** Headless configuration seam: no MainPanel or Swing view is instantiated. */
+    public static void configureHeadlessProxy(boolean enabled, String host, int port, String user, String password, boolean smart) {
+        _use_proxy=enabled; _proxy_host=host; _proxy_port=port; _proxy_user=user; _proxy_pass=password; _use_smart_proxy=smart;
+    }
+
     public static SmartMegaProxyManager getProxy_manager() {
         return _proxy_manager;
     }

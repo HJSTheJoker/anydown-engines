@@ -1,0 +1,23 @@
+name: Propose MegaBasterd upstream upgrade
+on:
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  proposal:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/mega_upstream_check.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: automation/megabasterd-upstream
+          add-paths: UPSTREAM_UPDATE.json
+          commit-message: 'chore(engine): propose upstream compatibility qualification'
+          title: 'Qualify the next MegaBasterd upstream release'
+          body: 'Review UPSTREAM_UPDATE.json. Port the upstream changes, update the pinned revision, and pass headless/platform/migration qualification before producing a signed engine release. This proposal does not activate upstream code.'

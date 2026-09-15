@@ -99,7 +99,18 @@ public final class SmartMegaProxyManager {
         return _force_smart_proxy;
     }
 
-    public SmartMegaProxyManager(MainPanel main_panel) {
+    private java.util.function.BooleanSupplier headlessExit;
+    private final java.util.concurrent.CountDownLatch headlessStopped=new java.util.concurrent.CountDownLatch(1);
+    private volatile Thread refreshThread;
+    private java.util.function.Consumer<String> headlessStatus;
+    public SmartMegaProxyManager(java.util.function.BooleanSupplier exit, java.util.function.Consumer<String> status) {
+        this(null, exit, status);
+    }
+    public SmartMegaProxyManager(MainPanel main_panel) { this(main_panel, null, null); }
+    private boolean isExiting() { return headlessExit != null ? headlessExit.getAsBoolean() : _main_panel.isExit(); }
+    private void publishStatus(String status) { if (headlessStatus != null) headlessStatus.accept(status); else _main_panel.getView().updateSmartProxyStatus(status); }
+    private SmartMegaProxyManager(MainPanel main_panel, java.util.function.BooleanSupplier exit, java.util.function.Consumer<String> status) {
+        headlessExit=exit; headlessStatus=status;
         // Proxy list URLs are now discovered by scanning the "custom_proxy_list"
         // textarea for '#URL' lines on every refresh, so the manager no longer
         // needs an explicit URL parameter and can aggregate from multiple
@@ -134,14 +145,17 @@ public final class SmartMegaProxyManager {
         refreshSmartProxySettings();
 
         THREAD_POOL.execute(() -> {
+            refreshThread=Thread.currentThread();
+            try {
+            if(isExiting())return;
             refreshProxyList();
 
             // Honour MainPanel.isExit() so the auto-refresh thread terminates
             // cleanly on shutdown instead of spinning until JVM kills the
             // daemon. Also restore the interrupt flag on InterruptedException.
-            while (!_main_panel.isExit()) {
+            while (!isExiting()) {
 
-                while (!_main_panel.isExit() && System.currentTimeMillis() < _last_refresh_timestamp + _autorefresh_time * 60L * 1000L) {
+                while (!isExiting() && System.currentTimeMillis() < _last_refresh_timestamp + _autorefresh_time * 60L * 1000L) {
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException ex) {
@@ -150,13 +164,15 @@ public final class SmartMegaProxyManager {
                     }
                 }
 
-                if (!_main_panel.isExit() && MainPanel.isUse_smart_proxy()) {
+                if (!isExiting() && MainPanel.isUse_smart_proxy()) {
 
                     refreshProxyList();
                 }
             }
+            }finally{headlessStopped.countDown();}
         });
     }
+    public void shutdownHeadless() throws InterruptedException {if(headlessExit!=null){Thread thread=refreshThread;if(thread!=null)thread.interrupt();if(!headlessStopped.await(35,java.util.concurrent.TimeUnit.SECONDS))throw new IllegalStateException("Proxy refresh did not quiesce");}}
 
     private static int clampWithWarn(String key, int value, int min, int max) {
         if (value < min) {
@@ -489,7 +505,7 @@ public final class SmartMegaProxyManager {
 
             }
 
-            _main_panel.getView().updateSmartProxyStatus("SmartProxy: ON (" + String.valueOf(getProxyCount() - countBlockedProxies()) + ")" + (this.isForce_smart_proxy() ? " F!" : ""));
+            publishStatus("SmartProxy: ON (" + String.valueOf(getProxyCount() - countBlockedProxies()) + ")" + (this.isForce_smart_proxy() ? " F!" : ""));
 
         }
     }
@@ -761,9 +777,9 @@ public final class SmartMegaProxyManager {
                 if (had_input) {
                     LOG.log(Level.WARNING, "[Smart Proxy] refresh produced 0 entries (URLs ok={0}, failed={1}) -- preserving previous list ({2} entries)",
                             new Object[]{urls_ok, urls_fail, _proxy_list.size()});
-                    _main_panel.getView().updateSmartProxyStatus("SmartProxy: ON (" + String.valueOf(getProxyCount()) + " stale)" + (this.isForce_smart_proxy() ? " F!" : ""));
+                    publishStatus("SmartProxy: ON (" + String.valueOf(getProxyCount()) + " stale)" + (this.isForce_smart_proxy() ? " F!" : ""));
                 } else {
-                    _main_panel.getView().updateSmartProxyStatus("SmartProxy: ON (0 proxies!)" + (this.isForce_smart_proxy() ? " F!" : ""));
+                    publishStatus("SmartProxy: ON (0 proxies!)" + (this.isForce_smart_proxy() ? " F!" : ""));
                     LOG.log(Level.INFO, "[Smart Proxy] no inline entries and no URLs configured");
                 }
             } else {
@@ -779,7 +795,7 @@ public final class SmartMegaProxyManager {
                 if (urls_fail > 0) {
                     suffix = " [" + urls_ok + "/" + (urls_ok + urls_fail) + " sources]";
                 }
-                _main_panel.getView().updateSmartProxyStatus("SmartProxy: ON (" + String.valueOf(getProxyCount()) + ")" + suffix + (this.isForce_smart_proxy() ? " F!" : ""));
+                publishStatus("SmartProxy: ON (" + String.valueOf(getProxyCount()) + ")" + suffix + (this.isForce_smart_proxy() ? " F!" : ""));
                 LOG.log(Level.INFO, "[Smart Proxy] proxy list refreshed ({0} entries; URLs ok={1}, failed={2})",
                         new Object[]{_proxy_list.size(), urls_ok, urls_fail});
             }
