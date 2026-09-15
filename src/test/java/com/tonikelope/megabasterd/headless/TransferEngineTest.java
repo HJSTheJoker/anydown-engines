@@ -22,7 +22,8 @@ class TransferEngineTest {
     byte[] plaintext,ciphertext;
     String fileKey;
     AtomicInteger requests=new AtomicInteger();
-    boolean corrupt;
+    boolean corrupt,requireFreshConnections;
+    AtomicInteger transientRangeFailures=new AtomicInteger();
     String fakeLink="https://mega.nz/#!synthetic!synthetic";
     MegaAPI api;
     void fixture(int length) throws Exception {
@@ -34,7 +35,9 @@ class TransferEngineTest {
         ciphertext=aes_ctr_encrypt_nopadding(plaintext,i32a2bin(key),i32a2bin(nonce));
         server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),8);
         server.createContext("/file",exchange->{
-            requests.incrementAndGet();String path=exchange.getRequestURI().getPath().substring("/file/".length());String[] range=path.split("-",-1);
+            requests.incrementAndGet();
+            if((requireFreshConnections&&!"close".equalsIgnoreCase(exchange.getRequestHeaders().getFirst("Connection")))||transientRangeFailures.getAndUpdate(value->Math.max(0,value-1))>0){exchange.sendResponseHeaders(503,-1);exchange.close();return;}
+            String path=exchange.getRequestURI().getPath().substring("/file/".length());String[] range=path.split("-",-1);
             int start=Integer.parseInt(range[0]),end=range.length>1&&!range[1].isEmpty()?Integer.parseInt(range[1]):ciphertext.length-1;
             if(start%16!=0||(end!=ciphertext.length-1&&(end+1)%16!=0)){exchange.sendResponseHeaders(400,-1);exchange.close();return;}
             byte[] data=Arrays.copyOfRange(ciphertext,start,end+1);if(corrupt&&data.length>0)data[0]^=1;
@@ -91,7 +94,7 @@ class TransferEngineTest {
         }
     }
     @Test void streamingAlignsCdnEndWithoutExposingExtraBytes() throws Exception {
-        fixture(8323);
+        fixture(8323);requireFreshConnections=true;transientRangeFailures.set(1);
         try(EngineContext context=context(temp.resolve("aligned-range-profile"))){
             String resolution=context.resolve(fakeLink).resolutionId;
             Map<?,?> stream=(Map<?,?>)context.call("stream.start",params("resolutionId",resolution));
@@ -104,6 +107,7 @@ class TransferEngineTest {
                 try(InputStream in=connection.getInputStream()){assertArrayEquals(Arrays.copyOfRange(plaintext,range[0],range[1]+1),in.readAllBytes());}
                 connection.disconnect();
             }
+            assertEquals(4,requests.get(),"One transient CDN failure must retry before responding, with fresh connections");
         }
     }
     @Test void thirdPartyProviderNeverReceivesSelectedAccountSession() throws Exception {
