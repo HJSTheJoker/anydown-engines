@@ -5,12 +5,39 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 from build_common import SUPPORTED_TARGETS, host_target
+
+
+def linux_loader_environment(path: Path, root: Path) -> dict[str, str]:
+    """Model the JVM's private loader context only for libraries inside that JRE.
+
+    The Java launcher opens lib/server/libjvm.so before it loads libjava/libawt
+    and their peers. Running ldd on those peers outside a JVM otherwise reports
+    libjvm.so missing even though relocated headless execution succeeds. Supply
+    only that bundled server directory; executables and unrelated libraries
+    retain their normal loader search, and inherited developer paths cannot
+    mask missing dependencies. Native smoke tests still run without this env.
+    """
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("LD_")}
+    boundary = root.resolve()
+    for directory in path.resolve().parents:
+        if not directory.is_relative_to(boundary):
+            break
+        if directory.name != "lib":
+            continue
+        java_home = directory.parent
+        jvm = directory / "server/libjvm.so"
+        launcher = java_home / "bin/java"
+        if launcher.is_file() and jvm.is_file() and jvm.resolve().is_relative_to(boundary):
+            environment["LD_LIBRARY_PATH"] = str(jvm.resolve().parent)
+            break
+    return environment
 
 
 def audit(root: Path, target: str | None = None) -> dict:
@@ -57,13 +84,14 @@ def audit(root: Path, target: str | None = None) -> dict:
             machine = int.from_bytes(header[18:20], byte_order)
             if target == "x86_64-unknown-linux-gnu" and machine != 62:
                 failures.append({"binary": str(path.relative_to(root)), "elf_machine": machine, "expected": "EM_X86_64 (62)"})
-            result = subprocess.run(["ldd", path], capture_output=True, text=True)
+            loader_env = linux_loader_environment(path, root)
+            result = subprocess.run(["ldd", path], capture_output=True, text=True, env=loader_env)
             if "not found" in result.stdout:
                 failures.append({"binary": str(path.relative_to(root)), "error": result.stdout})
             for line in result.stdout.splitlines():
                 if "=> /" in line and not any(prefix in line for prefix in ("=> /lib", "=> /usr/lib", str(root))):
                     failures.append({"binary": str(path.relative_to(root)), "dependency": line.strip()})
-            versions = subprocess.run(["readelf", "--version-info", path], capture_output=True, text=True, check=True).stdout
+            versions = subprocess.run(["readelf", "--version-info", path], capture_output=True, text=True, check=True, env=loader_env).stdout
             for version in set(re.findall(r"Name: GLIBC_(\d+\.\d+)", versions)):
                 minimum_versions.add(version)
                 if tuple(map(int, version.split("."))) > (2, 35):

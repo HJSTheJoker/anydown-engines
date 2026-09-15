@@ -33,6 +33,13 @@ def archive_tree(directory: Path, destination: Path, prefix: str, paths: list[Pa
                 continue
             if source.name == ".env" or source.name.startswith(".env."):
                 continue
+            # Standalone CoomerDL profiles are user data, even when they live
+            # beside source resources. Never include them in source bundles.
+            if relative.parts[:2] == ("resources", "config") and (
+                source.name in {"downloads.db", "downloads.db-wal", "downloads.db-shm", "settings.json"}
+                or (len(relative.parts) > 2 and relative.parts[2] == "cookies")
+            ):
+                continue
             info = archive.gettarinfo(str(source), arcname=f"{prefix}/{relative.as_posix()}")
             info.uid = info.gid = info.mtime = 0
             info.uname = info.gname = ""
