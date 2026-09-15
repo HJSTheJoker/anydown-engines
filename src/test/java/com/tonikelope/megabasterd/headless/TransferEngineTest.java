@@ -36,6 +36,7 @@ class TransferEngineTest {
         server.createContext("/file",exchange->{
             requests.incrementAndGet();String path=exchange.getRequestURI().getPath().substring("/file/".length());String[] range=path.split("-",-1);
             int start=Integer.parseInt(range[0]),end=range.length>1&&!range[1].isEmpty()?Integer.parseInt(range[1]):ciphertext.length-1;
+            if(start%16!=0||(end!=ciphertext.length-1&&(end+1)%16!=0)){exchange.sendResponseHeaders(400,-1);exchange.close();return;}
             byte[] data=Arrays.copyOfRange(ciphertext,start,end+1);if(corrupt&&data.length>0)data[0]^=1;
             exchange.sendResponseHeaders(200,data.length);try(OutputStream out=exchange.getResponseBody()){out.write(data);}exchange.close();
         });server.start();
@@ -87,6 +88,22 @@ class TransferEngineTest {
             HttpURLConnection connection=(HttpURLConnection)new URL(url).openConnection();connection.setRequestProperty("Range","bytes=19-119");assertEquals(206,connection.getResponseCode());assertEquals("bytes 19-119/312345",connection.getHeaderField("Content-Range"));
             try(InputStream in=connection.getInputStream()){assertArrayEquals(Arrays.copyOfRange(plaintext,19,120),in.readAllBytes());}connection.disconnect();
             context.call("stream.stop",params("id",stream.get("id")));HttpURLConnection stopped=(HttpURLConnection)new URL(url).openConnection();assertEquals(404,stopped.getResponseCode());stopped.disconnect();
+        }
+    }
+    @Test void streamingAlignsCdnEndWithoutExposingExtraBytes() throws Exception {
+        fixture(8323);
+        try(EngineContext context=context(temp.resolve("aligned-range-profile"))){
+            String resolution=context.resolve(fakeLink).resolutionId;
+            Map<?,?> stream=(Map<?,?>)context.call("stream.start",params("resolutionId",resolution));
+            for(int[] range:new int[][]{{0,127},{4000,4320},{8190,8322}}){
+                HttpURLConnection connection=(HttpURLConnection)new URL(stream.get("url").toString()).openConnection();
+                connection.setRequestProperty("Range","bytes="+range[0]+"-"+range[1]);
+                assertEquals(206,connection.getResponseCode());
+                assertEquals("bytes "+range[0]+"-"+range[1]+"/8323",connection.getHeaderField("Content-Range"));
+                assertEquals(range[1]-range[0]+1,connection.getContentLengthLong());
+                try(InputStream in=connection.getInputStream()){assertArrayEquals(Arrays.copyOfRange(plaintext,range[0],range[1]+1),in.readAllBytes());}
+                connection.disconnect();
+            }
         }
     }
     @Test void thirdPartyProviderNeverReceivesSelectedAccountSession() throws Exception {

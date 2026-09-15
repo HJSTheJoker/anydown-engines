@@ -50,8 +50,11 @@ public final class StreamSessions implements AutoCloseable {
             boolean partial=exchange.getRequestHeaders().containsKey("Range");if(partial)headers.set("Content-Range","bytes "+start+"-"+end+"/"+s.size);
             if(exchange.getRequestMethod().equals("HEAD")||length==0){exchange.sendResponseHeaders(partial?206:200,-1);return;}
             long aligned=start-start%16;
-            upstream=context.open(s.url+"/"+aligned+"-"+end,false);
-            if(upstream.getResponseCode()==403){upstream.disconnect();s.url="megacrypter".equals(s.sourceKind)?HeadlessMegaCrypter.downloadUrl(s.source,s.passHash,s.noexpire,null):context.api(s.accountId).getMegaFileDownloadUrl(s.source);upstream=context.open(s.url+"/"+aligned+"-"+end,false);}
+            // MEGA requires both ciphertext boundaries to cover complete AES blocks, except EOF.
+            long fetchEnd=Math.min(s.size-1,end|15L);
+            long fetchLength=fetchEnd-aligned+1;
+            upstream=context.open(ChunkWriterManager.genChunkUrl(s.url,s.size,aligned,fetchLength),false);
+            if(upstream.getResponseCode()==403){upstream.disconnect();s.url="megacrypter".equals(s.sourceKind)?HeadlessMegaCrypter.downloadUrl(s.source,s.passHash,s.noexpire,null):context.api(s.accountId).getMegaFileDownloadUrl(s.source);upstream=context.open(ChunkWriterManager.genChunkUrl(s.url,s.size,aligned,fetchLength),false);}
             if(upstream.getResponseCode()!=200&&upstream.getResponseCode()!=206){exchange.sendResponseHeaders(502,-1);return;}
             Cipher cipher=genDecrypter("AES","AES/CTR/NoPadding",initMEGALinkKey(s.key),forwardMEGALinkKeyIV(initMEGALinkKeyIV(s.key),aligned));
             exchange.sendResponseHeaders(partial?206:200,length);
