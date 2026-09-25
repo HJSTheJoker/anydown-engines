@@ -1,0 +1,15 @@
+{
+  "current_commit": "47200a4b9b01ff75f0636a6acac1ba3260b89e80",
+  "current_version": "8.58",
+  "proposed_tag": "v8.61",
+  "release_url": "https://github.com/tonikelope/megabasterd/releases/tag/v8.61",
+  "published_at": "2026-09-24T16:55:50Z",
+  "qualification_required": [
+    "headless protocol",
+    "download integrity and resume",
+    "account and upload fixtures",
+    "stream range and seeking",
+    "all supported platform packages",
+    "migration and rollback"
+  ]
+}
